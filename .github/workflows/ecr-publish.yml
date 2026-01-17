@@ -3,14 +3,18 @@ name: Build and Push Docker Images to ECR
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
   ECR_FRONTEND_REPOSITORY: ${{ secrets.ECR_FRONTEND_REPOSITORY }}
   ECR_SIGNALING_REPOSITORY: ${{ secrets.ECR_SIGNALING_REPOSITORY }}
+
+  EB_APPLICATION_NAME: ${{ secrets.EB_APPLICATION_NAME }}
+  EB_S3_BUCKET: ${{ secrets.EB_S3_BUCKET }}
+  EB_FRONTEND_ENVIRONMENT_NAME: ${{ secrets.EB_FRONTEND_ENVIRONMENT_NAME }}
+  EB_SIGNALING_ENVIRONMENT_NAME: ${{ secrets.EB_SIGNALING_ENVIRONMENT_NAME }}
 
 jobs:
   build-and-push:
@@ -54,3 +58,101 @@ jobs:
           REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
           docker push "$REGISTRY/$ECR_FRONTEND_REPOSITORY:${GITHUB_SHA}"
           docker push "$REGISTRY/$ECR_SIGNALING_REPOSITORY:${GITHUB_SHA}"
+
+      # ---------------------------
+      # 여기부터 EB 배포 추가
+      # ---------------------------
+
+      - name: Ensure EB S3 bucket exists (create if missing)
+        run: |
+          set -euo pipefail
+          if aws s3api head-bucket --bucket "$EB_S3_BUCKET" 2>/dev/null; then
+            echo "S3 bucket exists: $EB_S3_BUCKET"
+          else
+            echo "Creating S3 bucket: $EB_S3_BUCKET"
+            if [ "$AWS_REGION" = "us-east-1" ]; then
+              aws s3api create-bucket --bucket "$EB_S3_BUCKET"
+            else
+              aws s3api create-bucket --bucket "$EB_S3_BUCKET" \
+                --create-bucket-configuration LocationConstraint="$AWS_REGION"
+            fi
+
+            aws s3api put-public-access-block --bucket "$EB_S3_BUCKET" \
+              --public-access-block-configuration BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
+          fi
+
+      - name: Create EB application (if missing)
+        run: |
+          set -euo pipefail
+          aws elasticbeanstalk describe-applications --application-names "$EB_APPLICATION_NAME" >/dev/null 2>&1 || \
+            aws elasticbeanstalk create-application --application-name "$EB_APPLICATION_NAME"
+
+      - name: Deploy frontend to Elastic Beanstalk (Dockerrun v1)
+        run: |
+          set -euo pipefail
+          REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+          VERSION_LABEL="frontend-${GITHUB_SHA}"
+          ZIP="frontend-${GITHUB_SHA}.zip"
+          S3_KEY="eb/${VERSION_LABEL}.zip"
+
+          rm -rf eb_frontend && mkdir -p eb_frontend
+          cat > eb_frontend/Dockerrun.aws.json <<EOF
+          {
+            "AWSEBDockerrunVersion": 1,
+            "Image": {
+              "Name": "${REGISTRY}/${ECR_FRONTEND_REPOSITORY}:${GITHUB_SHA}",
+              "Update": "true"
+            },
+            "Ports": [
+              { "ContainerPort": 80 }
+            ]
+          }
+          EOF
+
+          (cd eb_frontend && zip -r "../${ZIP}" Dockerrun.aws.json)
+
+          aws s3 cp "${ZIP}" "s3://${EB_S3_BUCKET}/${S3_KEY}"
+
+          aws elasticbeanstalk create-application-version \
+            --application-name "$EB_APPLICATION_NAME" \
+            --version-label "$VERSION_LABEL" \
+            --source-bundle S3Bucket="$EB_S3_BUCKET",S3Key="$S3_KEY"
+
+          aws elasticbeanstalk update-environment \
+            --environment-name "$EB_FRONTEND_ENVIRONMENT_NAME" \
+            --version-label "$VERSION_LABEL"
+
+      - name: Deploy signaling to Elastic Beanstalk (Dockerrun v1)
+        run: |
+          set -euo pipefail
+          REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+          VERSION_LABEL="signaling-${GITHUB_SHA}"
+          ZIP="signaling-${GITHUB_SHA}.zip"
+          S3_KEY="eb/${VERSION_LABEL}.zip"
+
+          rm -rf eb_signaling && mkdir -p eb_signaling
+          cat > eb_signaling/Dockerrun.aws.json <<EOF
+          {
+            "AWSEBDockerrunVersion": 1,
+            "Image": {
+              "Name": "${REGISTRY}/${ECR_SIGNALING_REPOSITORY}:${GITHUB_SHA}",
+              "Update": "true"
+            },
+            "Ports": [
+              { "ContainerPort": 3001 }
+            ]
+          }
+          EOF
+
+          (cd eb_signaling && zip -r "../${ZIP}" Dockerrun.aws.json)
+
+          aws s3 cp "${ZIP}" "s3://${EB_S3_BUCKET}/${S3_KEY}"
+
+          aws elasticbeanstalk create-application-version \
+            --application-name "$EB_APPLICATION_NAME" \
+            --version-label "$VERSION_LABEL" \
+            --source-bundle S3Bucket="$EB_S3_BUCKET",S3Key="$S3_KEY"
+
+          aws elasticbeanstalk update-environment \
+            --environment-name "$EB_SIGNALING_ENVIRONMENT_NAME" \
+            --version-label "$VERSION_LABEL"

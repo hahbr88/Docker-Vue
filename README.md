@@ -29,17 +29,186 @@ AWS_ACCESS_KEY_ID
 
 AWS_SECRET_ACCESS_KEY
 ```
-
+### IAM 및 액세스키 생성
 ![alt text](0.png)
+
+### Github 의 설정
 ![alt text](1.png)
 ![alt text](2.png)
 ![alt text](3.png)
 ![alt text](4.png)
+
+### Action 진행 사항
 ![alt text](5.png)
+
+### ECR 에 Repo 생성 확인
 ![alt text](6.png)
 
+### Elastic Beantalk
+```
+A. 먼저 “프론트용 환경” 1개 만들기 (추천: my-app-frontend)
+1) (이미 선택됨) 환경 티어 = 웹 서버 환경
 
-# Vite + Vue3 + TailwindCSS v3 기반 WebRTC 로컬 테스트 모듈 (영상통화 + 채팅 + 화면공유 + 파일전송)
+지금처럼 웹 서버 환경 체크 그대로 두세요.
+
+2) 애플리케이션 이름 = my-app
+
+이미 입력하신 my-app 그대로 OK.
+
+3) 아래쪽에 있는 환경 정보에서
+
+환경 이름: my-app-frontend (예시)
+
+도메인: 자동으로 잡히는 값(충돌 나면 다른 걸로)
+
+환경 이름은 나중에 변경이 번거로우니, 프론트/시그널링 구분되게 이름을 추천합니다.
+
+4) 다음(2단계)으로 이동
+B. 2단계(서비스 액세스 구성)에서 “Docker 플랫폼” 선택
+5) 플랫폼(Platform)
+
+Docker 선택
+
+가능하면 Amazon Linux 2023 running Docker(또는 최신 Docker 플랫폼) 선택
+
+6) 환경 유형(비용 줄이려면)
+
+처음 테스트면 단일 인스턴스(Single instance) 추천
+
+운영이면 로드 밸런싱(Load balanced)
+
+7) 역할(Role) 관련(중요)
+
+여기 단계나 다음 단계에서 역할을 고르게 되는데:
+
+EC2 인스턴스 프로파일 역할(예: aws-elasticbeanstalk-ec2-role)이 있어야 하고
+
+이 역할에 ECR pull 권한이 있어야 합니다.
+
+가장 쉬운 방법: 역할에 AmazonEC2ContainerRegistryReadOnly 정책 붙이기
+
+이거 안 하면 배포할 때 “ECR에서 이미지 pull 실패”가 자주 납니다.
+```
+![alt text](image.png)
+![alt text](image-1.png)
+![alt text](image-2.png)
+
+![alt text](image-3.png)
+
+
+### aws-elasticbeanstalk-service-role 의 경우 environment
+### aws-elasticbeanstalk-ec2-role 의 경우 compute
+![alt text](image-5.png)
+
+![alt text](image-6.png)
+
+### Role name: aws-elasticbeanstalk-service-role (추천)
+![alt text](image-7.png)
+![alt text](image-8.png)
+
+### 권한 추가 - AmazonEC2ContainerRegistryReadOnly
+![alt text](image-9.png)
+![alt text](image-10.png)
+
+### 최종 권한 확인
+![alt text](image-16.png)
+![alt text](image-11.png)
+
+### 다시 위의 과정
+![alt text](image-12.png)
+![alt text](image-13.png)
+![alt text](image-14.png)
+
+### 이 화면에서 role 불러오는데 시간걸림
+![alt text](image-15.png)
+![alt text](image-17.png)
+![alt text](image-23.png)
+
+### 아래와 같이 compute , service 의 2종류 role 에 대해 혼동이 많으니 상당한 주의가 필요함
+![alt text](image-18.png)
+
+### 사용하는 기본 VPC 환경
+![alt text](image-19.png)
+
+### 인스탄스 선택 - 기본으로
+![alt text](image-20.png)
+
+### 구성 중 - 최대 10분정도 대기
+![alt text](image-22.png)
+
+### 최종 화면
+![alt text](image-24.png)
+
+### 경고 있을 경우 확인
+![alt text](image-25.png)
+
+### role 가장 큰 문제로, 다음 작업이 필요할 수 있음.
+방법 1) CloudShell로 서비스 연결 역할 생성 (가장 확실)
+AWS 콘솔 상단에서 CloudShell(>_ 아이콘) 열고 아래 한 줄 실행:
+```
+aws iam create-service-linked-role --aws-service-name elasticbeanstalk.amazonaws.com
+```
+성공하면:
+AWSServiceRoleForElasticBeanstalk 역할이 생성됩니다.
+
+### Cloud Shell 에서
+```
+~ $ aws iam get-role --role-name AWSServiceRoleForElasticBeanstalk
+{
+    "Role": {
+        "Path": "/aws-service-role/elasticbeanstalk.amazonaws.com/",
+        "RoleName": "AWSServiceRoleForElasticBeanstalk",
+        "RoleId": "AROARIBXLWVE3GC4XAKO7",
+        "Arn": "arn:aws:iam::086015456585:role/aws-service-role/elasticbeanstalk.amazonaws.com/AWSServiceRoleForElasticBeanstalk",
+        "CreateDate": "2026-01-17T12:00:25+00:00",
+        "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Service": "elasticbeanstalk.amazonaws.com"
+                    },
+                    "Action": "sts:AssumeRole"
+                }
+            ]
+        },
+        "MaxSessionDuration": 3600,
+        "RoleLastUsed": {}
+    }
+}
+~ $ 
+```
+### 여전히 권한 문제 시 권한 추가
+![alt text](image-26.png)
+
+### 배포
+![alt text](image-27.png)
+
+
+### Dockerrun.aws.json 파일 만들기 - 내용의 
+```
+{
+  "AWSEBDockerrunVersion": 1,
+  "Image": {
+    "Name": "<Account-ID>.dkr.ecr.ap-northeast-2.amazonaws.com/<ECR_FRONTEND_REPO>:<TAG>",
+    "Update": "true"
+  },
+  "Ports": [
+    { "ContainerPort": 80 }
+  ]
+}
+```
+### 압축
+```bash
+zip -r frontend-eb.zip Dockerrun.aws.json
+```
+![alt text](image-28.png)
+
+
+---
+---
+## Vite + Vue3 + TailwindCSS v3 기반 WebRTC 로컬 테스트 모듈 (영상통화 + 채팅 + 화면공유 + 파일전송)
 
 > 목표: **localhost**에서 “두 브라우저(또는 시크릿 탭)”로 쉽게 P2P WebRTC 기능을 테스트할 수 있는 최소/실전형 예제  
 > 구성:  

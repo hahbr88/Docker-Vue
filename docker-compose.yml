@@ -3,19 +3,19 @@ version: "3.9"
 services:
   frontend:
     image: nginx:alpine
-    container_name: re10-frontend
     ports:
-      - "8080:80"
+      - "80:80"          # EB 기본 트래픽(80)을 받도록
     volumes:
       - ./dist:/usr/share/nginx/html:ro
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
     restart: unless-stopped
+    depends_on:
+      - signaling
 
   signaling:
     build:
       context: .
       dockerfile: Dockerfile.1
-    container_name: re10-signaling
-    ports:
-      - "3001:3001"
+    expose:
+      - "3001"           # 외부 공개 없이 내부 통신만
     restart: unless-stopped
