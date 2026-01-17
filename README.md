@@ -250,6 +250,35 @@ EB_FRONTEND_ENVIRONMENT_NAME: 빈 값
 EB_SIGNALING_ENVIRONMENT_NAME: 빈 값
 ```
 ![alt text](image-33.png)
+```
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+  ECR_FRONTEND_REPOSITORY: ${{ secrets.ECR_FRONTEND_REPOSITORY }}
+  ECR_SIGNALING_REPOSITORY: ${{ secrets.ECR_SIGNALING_REPOSITORY }}
+
+  EB_APPLICATION_NAME: ${{ secrets.EB_APPLICATION_NAME }}
+  EB_S3_BUCKET: ${{ secrets.EB_S3_BUCKET }}
+  EB_FRONTEND_ENVIRONMENT_NAME: ${{ secrets.EB_FRONTEND_ENVIRONMENT_NAME }}
+  EB_SIGNALING_ENVIRONMENT_NAME: ${{ secrets.EB_SIGNALING_ENVIRONMENT_NAME }}
+```
+### my-app-backend 도 설정
+![alt text](image-34.png)
+
+### backend용 Dockerrun.aws.json 예시
+```
+{
+  "AWSEBDockerrunVersion": 1,
+  "Image": {
+    "Name": "086015456585.dkr.ecr.ap-northeast-2.amazonaws.com/my-signaling:latest",
+    "Update": "true"
+  },
+  "Ports": [
+    { "ContainerPort": 3001 }
+  ]
+}
+```
+### 각 상황의 로그 분석
+![alt text](image-35.png)
 
 
 
