@@ -299,6 +299,82 @@ EB_SIGNALING_ENVIRONMENT_NAME: 빈 값
 ### 보안그룹 일단 모두 Any
 ![alt text](image-39.png)
 
-
-
-
+### EC2 삭제 후 재 설치 여부 확인 및 해당 EC2 접속
+![alt text](image-40.png)
+![alt text](image-41.png)
+```
+sudo systemctl status docker --no-pager
+sudo ls -al /var/app/staging
+sudo sed -n '1,200p' /var/app/staging/Dockerrun.aws.json
+```
+---
+### 소스의 json 과 다른 포맷으로 저장 되는 오류 있을 수 있음
+```
+[root@ip-172-31-38-134 ~]# sudo ls -al /var/app/staging
+sudo sed -n '1,200p' /var/app/staging/Dockerrun.aws.json
+total 4
+drwxr-xr-x. 2 root root  32 Jan 18 01:00 .
+drwxr-xr-x. 3 root root  21 Jan 18 01:00 ..
+-rw-r--r--. 1 root root 239 Jan 18 00:54 Dockerrun.aws.json
+{
+  "AWSEBDockerrunVersion": 1,
+  "Image": {
+    "Name": "086015456585.dkr.ecr.ap-northeast-2.amazonaws.com/my-signaling:50475d4fe8296cda08816b6548bc5318a4a4d5a4",
+    "Update": "true"
+  },
+  "Ports": [
+    { "ContainerPort": 3001 }
+  ]
+}
+```
+---
+```
+[root@ip-172-31-38-134 ~]# sudo ls -al /opt/elasticbeanstalk/deployment/
+sudo unzip -p /opt/elasticbeanstalk/deployment/app_source_bundle Dockerrun.aws.json | sed -n '1,120p'
+total 16
+drwxr-xr-x. 2 root root  111 Jan 18 00:55 .
+drwxr-xr-x. 8 root root  144 Jan 18 00:55 ..
+-rw-r--r--. 1 root root  380 Jan 18 01:00 app_source_bundle
+-rw-r--r--. 1 root root  127 Jan 18 01:00 app_version_manifest.json
+-rw-r--r--. 1 root root 6901 Jan 18 01:00 cfn-metadata-cache.json
+-rw-r--r--. 1 root root    0 Jan 18 01:00 env.list
+{
+  "AWSEBDockerrunVersion": 1,
+  "Image": {
+    "Name": "086015456585.dkr.ecr.ap-northeast-2.amazonaws.com/my-signaling:50475d4fe8296cda08816b6548bc5318a4a4d5a4",
+    "Update": "true"
+  },
+  "Ports": [
+    { "ContainerPort": 3001 }
+  ]
+}
+```
+---
+```
+[root@ip-172-31-38-134 ~]# aws ecr describe-images \
+  --region ap-northeast-2 \
+  --repository-name my-signaling \
+  --image-ids imageTag=50475d4fe8296cda08816b6548bc5318a4a4d5a4
+{
+    "imageDetails": [
+        {
+            "registryId": "086015456585",
+            "repositoryName": "my-signaling",
+            "imageDigest": "sha256:bc9fe803babb2562326843b026ddec06aa12b12d7587f820d3164fe8bfbdae13",
+            "imageTags": [
+                "50475d4fe8296cda08816b6548bc5318a4a4d5a4"
+            ],
+            "imageSizeInBytes": 122871219,
+            "imagePushedAt": "2026-01-18T00:54:39.968000+00:00",
+            "imageManifestMediaType": "application/vnd.docker.distribution.manifest.v2+json",
+            "artifactMediaType": "application/vnd.docker.container.image.v1+json",
+            "imageStatus": "ACTIVE"
+        }
+    ]
+}
+```
+### json 의 숫자 타입에서 "" 사용 여부는 상황에 따라 좀 다를 수 있음
+### BackEnd OK 내역
+![alt text](image-42.png)
+![alt text](image-43.png)
+![alt text](image-44.png)
