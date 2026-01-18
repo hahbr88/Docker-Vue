@@ -291,7 +291,17 @@ EB_SIGNALING_ENVIRONMENT_NAME: 빈 값
 ### 위의 내용은 ECR 에서 확인
 ![alt text](image-37.png)
 
+### ECR 관련
+![alt text](image-46.png)
+```
+action yaml 에서 아래의 부분과 동일
 
+      - name: Log in to Amazon ECR
+        run: |
+          aws ecr get-login-password --region "$AWS_REGION" \
+            | docker login --username AWS --password-stdin "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+
+```
 
 ### EC2 현황
 ![alt text](image-36.png)

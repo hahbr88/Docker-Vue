@@ -98,13 +98,13 @@ jobs:
           rm -rf eb_frontend && mkdir -p eb_frontend
           cat > eb_frontend/Dockerrun.aws.json <<EOF
           {
-            "AWSEBDockerrunVersion": 1,
+            "AWSEBDockerrunVersion": "1",
             "Image": {
               "Name": "${REGISTRY}/${ECR_FRONTEND_REPOSITORY}:${GITHUB_SHA}",
               "Update": "true"
             },
             "Ports": [
-              { "ContainerPort": 80 }
+              { "ContainerPort": "80" }
             ]
           }
           EOF
@@ -133,13 +133,13 @@ jobs:
           rm -rf eb_signaling && mkdir -p eb_signaling
           cat > eb_signaling/Dockerrun.aws.json <<EOF
           {
-            "AWSEBDockerrunVersion": 1,
+            "AWSEBDockerrunVersion": "1",
             "Image": {
               "Name": "${REGISTRY}/${ECR_SIGNALING_REPOSITORY}:${GITHUB_SHA}",
               "Update": "true"
             },
             "Ports": [
-              { "ContainerPort": 3001 }
+              { "ContainerPort": "3001" }
             ]
           }
           EOF
