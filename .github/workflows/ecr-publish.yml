@@ -33,9 +33,10 @@ jobs:
 
       - name: Who am I on AWS?
         run: |
+          set -e
           aws sts get-caller-identity
-          aws configure get region
-
+          echo "AWS_REGION=${AWS_REGION:-}"
+          aws configure list
 
       - name: Log in to Amazon ECR
         run: |
@@ -95,9 +96,10 @@ jobs:
             
       - name: Who am I on AWS?
         run: |
+          set -e
           aws sts get-caller-identity
-          aws configure get region
-
+          echo "AWS_REGION=${AWS_REGION:-}"
+          aws configure list
 
       - name: Deploy frontend to Elastic Beanstalk (Dockerrun v1)
         run: |
