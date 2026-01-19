@@ -31,6 +31,12 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      - name: Who am I on AWS?
+        run: |
+          aws sts get-caller-identity
+          aws configure get region
+
+
       - name: Log in to Amazon ECR
         run: |
           aws ecr get-login-password --region "$AWS_REGION" \
@@ -86,6 +92,12 @@ jobs:
           set -euo pipefail
           aws elasticbeanstalk describe-applications --application-names "$EB_APPLICATION_NAME" >/dev/null 2>&1 || \
             aws elasticbeanstalk create-application --application-name "$EB_APPLICATION_NAME"
+            
+      - name: Who am I on AWS?
+        run: |
+          aws sts get-caller-identity
+          aws configure get region
+
 
       - name: Deploy frontend to Elastic Beanstalk (Dockerrun v1)
         run: |
